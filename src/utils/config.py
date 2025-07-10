@@ -39,6 +39,8 @@ class Config:
             config["wait_time_max"] = float(wait_max)
         if score := os.getenv("SCORE"):
             config["score"] = int(score)
+        if full_extra_tasks := os.getenv("FULL_EXTRA_TASKS"):
+            config["full_extra_tasks"] = full_extra_tasks.lower() in ("1", "true", "yes")
             
         # 自动登录相关配置
         if phone := os.getenv("NETEASE_PHONE"):
@@ -87,6 +89,7 @@ class Config:
         config.setdefault("smtp_server", "smtp.gmail.com")
         config.setdefault("smtp_port", 465)
         config.setdefault("score", 3)
+        config.setdefault("full_extra_tasks", False)
 
     def get(self, key: str, default: Any = None) -> Any:
         """获取配置项"""
