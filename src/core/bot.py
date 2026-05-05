@@ -6,6 +6,7 @@ from ..utils.config import Config
 from ..utils.logger import Logger
 from .tasks.daily import DailyTask
 from .tasks.extra import ExtraTask
+from .tasks.yunbei_signin import run_yunbei_signin
 
 
 class MusicPartnerBot:
@@ -20,7 +21,9 @@ class MusicPartnerBot:
     def run(self) -> bool:
         try:
             self._verify_user()
-            
+
+            run_yunbei_signin(self.session, self.logger, self.config)
+
             # 处理基础评分任务
             daily_task = DailyTask(self.session, self.logger, self.config)
             complete, task_data = daily_task._get_daily_tasks()
