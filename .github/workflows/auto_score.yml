@@ -2,8 +2,12 @@ name: Auto Score
 
 on:
   schedule:
-    - cron: '0 17 * * *'  # UTC 17:00 (北京时间1:00)
+    # 错开整点：GitHub 在每小时整点负载最高，定时任务会被延迟甚至丢弃
+    - cron: '23 17 * * *'  # UTC 17:23 (北京时间 1:23)
   workflow_dispatch:
+
+permissions:
+  contents: write  # 供末尾的 keepalive 提交使用
 
 jobs:
   score:
@@ -11,6 +15,31 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # keepalive 需要用 git log 读取 .keepalive 的最后提交时间
+    
+    # 公共仓库连续 60 天没有任何提交，GitHub 会自动停用定时工作流。
+    # 这里每 20 天补一个空提交，保证 schedule 永不被停用；近期有活动则跳过。
+    - name: Keepalive (prevent 60-day inactivity disable)
+      run: |
+        set -e
+        last=$(git log -1 --format=%ct -- .keepalive 2>/dev/null || echo "")
+        if [ -n "$last" ]; then
+          age=$(( ( $(date -u +%s) - last ) / 86400 ))
+        else
+          age=999
+        fi
+        echo "keepalive 距今 ${age} 天"
+        if [ "$age" -lt 20 ]; then
+          echo "仓库近期有提交，跳过"
+          exit 0
+        fi
+        date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add .keepalive
+        git commit -m "chore: keepalive $(date -u +%F)"
+        git push
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -36,4 +65,3 @@ jobs:
         FULL_EXTRA_TASKS: ${{ secrets.FULL_EXTRA_TASKS }}
 
       run: python main.py 
-
